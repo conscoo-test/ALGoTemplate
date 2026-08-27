@@ -3,5 +3,14 @@
   "country": "de",
   "appFolders": [],
   "testFolders": [],
-  "bcptTestFolders": []
+  "bcptTestFolders": [],
+  "customCodeCops": [
+    ".alcops/ALCops.ApplicationCop.dll",
+    ".alcops/ALCops.DocumentationCop.dll",
+    ".alcops/ALCops.FormattingCop.dll",
+    ".alcops/ALCops.LinterCop.dll",
+    ".alcops/ALCops.PlatformCop.dll",
+    ".alcops/ALCops.TestAutomationCop.dll",
+    ".alcops/ALCops.Common.dll"
+  ]
 }
