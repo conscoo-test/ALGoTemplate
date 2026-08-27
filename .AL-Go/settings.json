@@ -1,7 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/v9.2/.Modules/settings.schema.json",
-  "country": "us",
+  "country": "de",
   "appFolders": [],
   "testFolders": [],
-  "bcptTestFolders": []
+  "bcptTestFolders": [],
+  "customCodeCops": [
+    ".alcops/ALCops.ApplicationCop.dll",
+    ".alcops/ALCops.DocumentationCop.dll",
+    ".alcops/ALCops.FormattingCop.dll",
+    ".alcops/ALCops.LinterCop.dll",
+    ".alcops/ALCops.PlatformCop.dll",
+    ".alcops/ALCops.TestAutomationCop.dll",
+    ".alcops/ALCops.Common.dll"
+  ]
 }
