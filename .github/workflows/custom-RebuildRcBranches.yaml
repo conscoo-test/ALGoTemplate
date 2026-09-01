@@ -9,6 +9,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Token aus GitHub App generieren
         id: app-token
         uses: ./.github/actions/generate-app-token

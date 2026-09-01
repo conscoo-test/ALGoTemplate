@@ -11,6 +11,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Token aus GitHub App generieren
         id: app-token
         uses: ./.github/actions/generate-app-token

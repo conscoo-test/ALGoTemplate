@@ -37,6 +37,8 @@ jobs:
             Add-Content -Path $env:GITHUB_OUTPUT -Value "pr_number=$($prs[0].number)"
           }
 
+      - uses: actions/checkout@v4
+
       - name: Token aus GitHub App generieren
         if: steps.find-pr.outputs.found == 'true'
         id: app-token

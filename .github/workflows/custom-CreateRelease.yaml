@@ -39,6 +39,8 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Token aus GitHub App generieren
         id: app-token
         uses: ./.github/actions/generate-app-token
