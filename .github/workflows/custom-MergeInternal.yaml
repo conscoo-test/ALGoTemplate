@@ -1,0 +1,76 @@
+name: Stage 1 – Merge into rc/internal
+on:
+  workflow_run:
+    workflows: ['Pull Request Build']
+    branches: ['feature/*']
+    types: [completed]
+
+jobs:
+  merge-to-internal:
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.repository.full_name == github.repository &&
+      contains(vars.RELEASE_STAGES, 'internal')
+    concurrency:
+      group: rc-internal-merge
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Offenen PR für diesen Feature-Branch suchen
+        id: find-pr
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $branch = '${{ github.event.workflow_run.head_branch }}'
+          $prs = gh pr list --base main --head $branch --state open --json number `
+            --repo '${{ github.repository }}' | ConvertFrom-Json
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "branch=$branch"
+          if ($prs.Count -eq 0) {
+            Write-Host "Kein offener PR für $branch – übersprungen"
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "found=false"
+          } else {
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "found=true"
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "pr_number=$($prs[0].number)"
+          }
+
+      - name: Token aus GitHub App generieren
+        if: steps.find-pr.outputs.found == 'true'
+        id: app-token
+        uses: ./.github/actions/generate-app-token
+        with:
+          token-secret: ${{ secrets.GHTOKENWORKFLOW }}
+
+      - if: steps.find-pr.outputs.found == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Merge feature branch into rc/internal
+        if: steps.find-pr.outputs.found == 'true'
+        env:
+          BRANCH: ${{ steps.find-pr.outputs.branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin --prune
+          git fetch origin "$BRANCH"
+          if git ls-remote --exit-code origin rc/internal > /dev/null 2>&1; then
+            git checkout rc/internal
+            git reset --hard origin/rc/internal
+          else
+            echo "Branch rc/internal existiert nicht – wird aus main angelegt"
+            git checkout -b rc/internal origin/main
+            git push origin rc/internal
+          fi
+          git merge "origin/$BRANCH" --no-edit \
+            -m "Merge $BRANCH into rc/internal" || {
+            echo "::error::Merge-Konflikt: $BRANCH kann nicht in rc/internal gemerged werden"
+            git merge --abort
+            exit 1
+          }
+          git push origin rc/internal

@@ -1,0 +1,96 @@
+name: Create Release (custom)
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag (leer = aus app.json ermitteln)
+        required: false
+        default: ''
+      name:
+        description: Release-Name (leer = "Release {tag}")
+        required: false
+        default: ''
+      releaseType:
+        description: Release-Typ
+        type: choice
+        options:
+          - Release
+          - Prerelease
+          - Draft
+        default: Release
+      updateVersionNumber:
+        description: Neue Version in main nach Release (z.B. +0.1)
+        required: false
+        default: '+0.1'
+      createReleaseBranch:
+        description: Release-Branch anlegen?
+        type: boolean
+        default: false
+      directCommit:
+        description: Direkt committen?
+        type: boolean
+        default: true
+      useGhTokenWorkflow:
+        description: GhTokenWorkflow für PR/Commit verwenden?
+        type: boolean
+        default: true
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Token aus GitHub App generieren
+        id: app-token
+        uses: ./.github/actions/generate-app-token
+        with:
+          token-secret: ${{ secrets.GHTOKENWORKFLOW }}
+          actions-permission: write
+
+      - name: Versions-Tag ermitteln
+        id: version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          $tag = '${{ inputs.tag }}'.Trim()
+          if (-not $tag) {
+            $treeJson = gh api "repos/$env:GITHUB_REPOSITORY/git/trees/main?recursive=1"
+            if ($LASTEXITCODE -ne 0) { Write-Error "Tree API failed: $treeJson"; exit 1 }
+            $tree    = $treeJson | ConvertFrom-Json
+            $entries = $tree.tree | Where-Object { $_.path -match '(^|/)app\.json$' -and $_.path -notmatch '\.alpackages' -and $_.type -eq 'blob' }
+            $highest = $null
+            foreach ($entry in $entries) {
+              $blobJson = gh api "repos/$env:GITHUB_REPOSITORY/git/blobs/$($entry.sha)"
+              if ($LASTEXITCODE -ne 0) { Write-Warning "Skipping $($entry.path) (blob error)"; continue }
+              $blob    = $blobJson | ConvertFrom-Json
+              $appJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($blob.content)) | ConvertFrom-Json
+              $verStr  = $appJson.version -replace '^(\d+\.\d+\.\d+\.\d+).*','$1'
+              if (-not $verStr) { Write-Warning "Skipping $($entry.path) (no version field)"; continue }
+              $ver     = [System.Version]$verStr
+              if ($null -eq $highest -or $ver -gt $highest.Ver) {
+                $highest = [pscustomobject]@{ Ver = $ver; AppJson = $appJson }
+              }
+            }
+            if ($null -eq $highest) { Write-Error "No valid app.json with version found in main"; exit 1 }
+            $tag = "$($highest.Ver.Major).$($highest.Ver.Minor).$($highest.Ver.Build)"
+          }
+          $releaseName = '${{ inputs.name }}'.Trim()
+          if (-not $releaseName) { $releaseName = "Release $tag" }
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "tag=$tag"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "name=$releaseName"
+
+      - name: Release erstellen
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh workflow run "CreateRelease.yaml" `
+            --ref main `
+            --field "releaseType=${{ inputs.releaseType }}" `
+            --field "tag=${{ steps.version.outputs.tag }}" `
+            --field "name=${{ steps.version.outputs.name }}" `
+            --field "updateVersionNumber=${{ inputs.updateVersionNumber }}" `
+            --field "createReleaseBranch=${{ inputs.createReleaseBranch }}" `
+            --field "directCommit=${{ inputs.directCommit }}" `
+            --field "useGhTokenWorkflow=${{ inputs.useGhTokenWorkflow }}" `
+            --repo ${{ github.repository }}

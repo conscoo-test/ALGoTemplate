@@ -1,0 +1,42 @@
+name: Check Stage Label
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  check-label:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: read
+    # Workflow läuft immer durch (exit 0) → keine Failure-Mail; PR wird per Check Run blockiert
+    steps:
+      - name: Check required stage label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          RELEASE_STAGES: ${{ vars.RELEASE_STAGES }}
+        run: |
+          if [ -z "$RELEASE_STAGES" ]; then
+            conclusion="success"; summary="Kein Staging konfiguriert."
+          else
+            if echo "$RELEASE_STAGES" | grep -q "external"; then
+              required_label="external-tested"
+              missing_msg="Label 'external-tested' fehlt – externer Test muss zuerst bestanden werden."
+            else
+              required_label="internal-tested"
+              missing_msg="Label 'internal-tested' fehlt – interner Test muss zuerst bestanden werden."
+            fi
+            labels=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json labels -q '.labels[].name')
+            if echo "$labels" | grep -q "$required_label"; then
+              conclusion="success"; summary="Label vorhanden."
+            else
+              conclusion="failure"; summary="$missing_msg"
+            fi
+          fi
+          gh api repos/${{ github.repository }}/check-runs \
+            --method POST -H "Accept: application/vnd.github+json" \
+            -f name="stage-label-check" -f head_sha="$SHA" \
+            -f conclusion="$conclusion" \
+            -f "output[title]=Stage Label Check" -f "output[summary]=$summary"

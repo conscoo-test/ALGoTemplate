@@ -1,0 +1,61 @@
+name: Rebuild rc-Branches after Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  rebuild-rc-branches:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Token aus GitHub App generieren
+        id: app-token
+        uses: ./.github/actions/generate-app-token
+        with:
+          token-secret: ${{ secrets.GHTOKENWORKFLOW }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Rebuild rc/internal
+        if: contains(vars.RELEASE_STAGES, 'internal')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B rc/internal origin/main
+
+          branches=$(gh pr list --base main --state open --json headRefName \
+            --jq '.[].headRefName' --repo ${{ github.repository }})
+          for branch in $branches; do
+            git fetch origin "$branch"
+            git merge "origin/$branch" --no-edit \
+              -m "Rebuild: merge $branch into rc/internal" || {
+              echo "Konflikt bei $branch – übersprungen"
+              git merge --abort
+            }
+          done
+          git push origin rc/internal --force
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Rebuild rc/external
+        if: contains(vars.RELEASE_STAGES, 'external')
+        run: |
+          git checkout -B rc/external origin/main
+
+          branches=$(gh pr list --base main --state open --label "internal-tested" \
+            --json headRefName --jq '.[].headRefName' --repo ${{ github.repository }})
+          for branch in $branches; do
+            git fetch origin "$branch"
+            git merge "origin/$branch" --no-edit \
+              -m "Rebuild: merge $branch into rc/external" || {
+              echo "Konflikt bei $branch – übersprungen"
+              git merge --abort
+            }
+          done
+          git push origin rc/external --force
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}

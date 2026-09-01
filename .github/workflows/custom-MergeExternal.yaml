@@ -1,0 +1,48 @@
+name: Stage 2 – Merge into rc/external
+on:
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+jobs:
+  merge-to-external:
+    if: github.event.label.name == 'internal-tested' && contains(vars.RELEASE_STAGES, 'external')
+    concurrency:
+      group: rc-external-merge
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Token aus GitHub App generieren
+        id: app-token
+        uses: ./.github/actions/generate-app-token
+        with:
+          token-secret: ${{ secrets.GHTOKENWORKFLOW }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Merge feature branch into rc/external
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin --prune
+          git fetch origin ${{ github.event.pull_request.head.ref }}
+          if git ls-remote --exit-code origin rc/external > /dev/null 2>&1; then
+            git checkout rc/external
+            git reset --hard origin/rc/external
+          else
+            echo "Branch rc/external existiert nicht – wird aus main angelegt"
+            git checkout -b rc/external origin/main
+            git push origin rc/external
+          fi
+          git merge "origin/${{ github.event.pull_request.head.ref }}" --no-edit \
+            -m "Merge ${{ github.event.pull_request.head.ref }} into rc/external" || {
+            echo "::error::Merge-Konflikt bei rc/external"
+            git merge --abort
+            exit 1
+          }
+          git push origin rc/external

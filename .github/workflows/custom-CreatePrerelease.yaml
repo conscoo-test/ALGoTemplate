@@ -1,0 +1,60 @@
+name: Stage 2 – Create Pre-release
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['CI/CD']
+    branches: ['rc/external']
+    types: [completed]
+
+jobs:
+  prerelease:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Token aus GitHub App generieren
+        id: app-token
+        uses: ./.github/actions/generate-app-token
+        with:
+          token-secret: ${{ secrets.GHTOKENWORKFLOW }}
+          actions-permission: write
+
+      - name: Versions-Tag ermitteln
+        id: version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          $treeJson = gh api "repos/$env:GITHUB_REPOSITORY/git/trees/rc/external?recursive=1"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Tree API failed: $treeJson"; exit 1 }
+          $tree    = $treeJson | ConvertFrom-Json
+          $entries = $tree.tree | Where-Object { $_.path -match '(^|/)app\.json$' -and $_.path -notmatch '\.alpackages' -and $_.type -eq 'blob' }
+          $highest = $null
+          foreach ($entry in $entries) {
+            $blobJson = gh api "repos/$env:GITHUB_REPOSITORY/git/blobs/$($entry.sha)"
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Skipping $($entry.path) (blob error)"; continue }
+            $blob    = $blobJson | ConvertFrom-Json
+            $appJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($blob.content)) | ConvertFrom-Json
+            $verStr  = $appJson.version -replace '^(\d+\.\d+\.\d+\.\d+).*','$1'
+            if (-not $verStr) { Write-Warning "Skipping $($entry.path) (no version field)"; continue }
+            $ver     = [System.Version]$verStr
+            if ($null -eq $highest -or $ver -gt $highest.Ver) {
+              $highest = [pscustomobject]@{ Ver = $ver; AppJson = $appJson }
+            }
+          }
+          if ($null -eq $highest) { Write-Error "No valid app.json with version found in rc/external"; exit 1 }
+          $semver  = "$($highest.Ver.Major).$($highest.Ver.Minor).$($highest.Ver.Build)"
+          $stamp   = (Get-Date -Format 'yyyyMMddHHmmss')
+          $tag     = "$semver-pre.$stamp"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "tag=$tag"
+
+      - name: Pre-release erstellen
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh workflow run "CreateRelease.yaml" `
+            --ref rc/external `
+            --field "releaseType=Prerelease" `
+            --field "tag=${{ steps.version.outputs.tag }}" `
+            --field "name=Pre-release ${{ steps.version.outputs.tag }}" `
+            --repo ${{ github.repository }}

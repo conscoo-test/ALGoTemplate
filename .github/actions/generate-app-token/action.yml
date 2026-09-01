@@ -1,0 +1,46 @@
+name: Token aus GitHub App generieren
+description: Generates a GitHub token from a GitHub App (JSON secret) or falls back to a plain PAT.
+
+inputs:
+  token-secret:
+    description: GHTOKENWORKFLOW secret (JSON with App credentials or plain PAT)
+    required: true
+  actions-permission:
+    description: Permission level for the actions scope (read or write)
+    required: false
+    default: read
+
+outputs:
+  token:
+    description: Generated GitHub token
+    value: ${{ steps.generate.outputs.token }}
+
+runs:
+  using: composite
+  steps:
+    - id: generate
+      shell: pwsh
+      env:
+        TOKEN_SECRET: ${{ inputs.token-secret }}
+        ACTIONS_PERMISSION: ${{ inputs.actions-permission }}
+      run: |
+        $secret = $env:TOKEN_SECRET
+        if ($secret.TrimStart().StartsWith('{')) {
+          $json    = $secret | ConvertFrom-Json
+          $toB64Url = { [Convert]::ToBase64String($args[0]).TrimEnd('=').Replace('+','-').Replace('/','_') }
+          $now     = [System.DateTimeOffset]::UtcNow
+          $header  = & $toB64Url ([System.Text.Encoding]::UTF8.GetBytes('{"alg":"RS256","typ":"JWT"}'))
+          $payload = & $toB64Url ([System.Text.Encoding]::UTF8.GetBytes("{`"iat`":$($now.AddSeconds(-60).ToUnixTimeSeconds()),`"exp`":$($now.AddMinutes(10).ToUnixTimeSeconds()),`"iss`":`"$($json.GitHubAppClientId)`"}"))
+          $rsa     = [System.Security.Cryptography.RSA]::Create()
+          $rsa.ImportFromPem($json.PrivateKey)
+          $sig     = & $toB64Url ($rsa.SignData([System.Text.Encoding]::UTF8.GetBytes("$header.$payload"), [System.Security.Cryptography.HashAlgorithmName]::SHA256, [System.Security.Cryptography.RSASignaturePadding]::Pkcs1))
+          $jwt     = "$header.$payload.$sig"
+          $apiHdr  = @{ Authorization = "Bearer $jwt"; Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28" }
+          $install = Invoke-RestMethod -Method GET -Headers $apiHdr -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/installation"
+          $body    = "{`"permissions`":{`"contents`":`"write`",`"pull_requests`":`"write`",`"workflows`":`"write`",`"metadata`":`"read`",`"actions`":`"$env:ACTIONS_PERMISSION`"}}"
+          $token   = (Invoke-RestMethod -Method POST -Headers $apiHdr -Body $body -ContentType "application/json" -Uri $install.access_tokens_url).token
+        } else {
+          $token = $secret
+        }
+        Write-Host "::add-mask::$token"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "token=$token"

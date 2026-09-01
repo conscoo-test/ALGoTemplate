@@ -1,0 +1,20 @@
+name: Reset Stage Labels
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+jobs:
+  reset-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Labels zurücksetzen
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label "internal-tested" \
+            --repo ${{ github.repository }} 2>/dev/null || true
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label "external-tested" \
+            --repo ${{ github.repository }} 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ github.token }}
