@@ -1,15 +1,34 @@
 Param([Hashtable]$parameters)
 
+function Get-SettingValue {
+    Param(
+        [object]$settings,
+        [string]$name
+    )
+
+    if ($null -eq $settings) {
+        return $null
+    }
+
+    $property = $settings.PSObject.Properties[$name]
+    if ($null -ne $property) {
+        return $property.Value
+    }
+
+    return $null
+}
+
 $projectName = $parameters.projectName
 $appsFolder = $parameters.appsFolder
 $type = $parameters.type
-$fileShareBasePath = $parameters.RepoSettings.fileShareBasePath
-$fileSharePath = $parameters.ProjectSettings.fileSharePath
 
 if ($type -ne "Release") {
     Write-Host "Skipping file share delivery for delivery type '$type'. Only Release is delivered."
     return
 }
+
+$fileShareBasePath = Get-SettingValue -settings $parameters.RepoSettings -name 'fileShareBasePath'
+$fileSharePath = Get-SettingValue -settings $parameters.ProjectSettings -name 'fileSharePath'
 
 if ([string]::IsNullOrWhiteSpace($fileShareBasePath)) {
     $fileShareBasePath = "\\10.60.0.35\Software\apps"
