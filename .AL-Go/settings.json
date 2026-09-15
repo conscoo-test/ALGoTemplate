@@ -4,6 +4,9 @@
   "appFolders": [],
   "testFolders": [],
   "bcptTestFolders": [],
+  "fullBuildPatterns": [
+    ".AL-Go/settings.json"
+  ],
   "customCodeCops": [
     ".alcops/ALCops.ApplicationCop.dll",
     ".alcops/ALCops.DocumentationCop.dll",
