@@ -157,7 +157,6 @@ jobs:
 
       - name: Resolve ForNAV runtime dependency
         if: steps.DetermineBuildProject.outputs.BuildIt == 'True' && contains(env.Settings, 'fornav.com/products/rep/runtime')
-        shell: ${{ inputs.shell }}
         run: |
           $settings = $env:Settings | ConvertFrom-Json
           $artifactMatch = [regex]::Match($env:artifact, '/(?<version>\d+)\.\d+(?:\.\d+){0,2}/')
