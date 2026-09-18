@@ -34,8 +34,16 @@ if (-not (Get-Command DetermineArtifactUrl -ErrorAction SilentlyContinue)) {
     throw "AL-Go function 'DetermineArtifactUrl' is not available in BuildInitialize."
 }
 
-$projectSettings = ConvertTo-HashTable ($settings | ConvertTo-Json -Depth 99)
-if (-not $projectSettings.ContainsKey('applicationDependency')) {
+$baseFolder = if ($env:GITHUB_WORKSPACE) {
+    $env:GITHUB_WORKSPACE
+}
+else {
+    (Get-Location).Path
+}
+
+$projectSettings = ReadSettings -baseFolder $baseFolder -project $project
+
+if (-not ($projectSettings.Keys -contains 'applicationDependency')) {
     $projectSettings.applicationDependency = '18.0.0.0'
 }
 
@@ -45,11 +53,15 @@ $projectSettings = AnalyzeRepo `
     -doNotCheckArtifactSetting `
     -doNotIssueWarnings
 
-if ($settings.PSObject.Properties.Name -contains 'applicationDependency') {
-    $settings.applicationDependency = $projectSettings.applicationDependency
-}
-else {
-    $settings | Add-Member -MemberType NoteProperty -Name applicationDependency -Value $projectSettings.applicationDependency
+foreach ($propertyName in $projectSettings.Keys) {
+    if ($settings.PSObject.Properties.Name -contains $propertyName) {
+        continue
+    }
+
+    $settings | Add-Member `
+        -MemberType NoteProperty `
+        -Name $propertyName `
+        -Value $projectSettings[$propertyName]
 }
 
 $artifactUrl = DetermineArtifactUrl -projectSettings $projectSettings
