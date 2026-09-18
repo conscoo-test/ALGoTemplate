@@ -5,7 +5,7 @@ Param(
 $ErrorActionPreference = "Stop"
 
 $forNavUrlPrefix = "https://www.fornav.com/products/rep/runtime/"
-$settings = $env:Settings | ConvertFrom-Json
+$settings = $env:Settings | ConvertFrom-Json | ConvertTo-HashTable
 $installApps = @($settings.installApps)
 
 $forNavAppExists = $installApps | Where-Object {
@@ -17,12 +17,7 @@ if (-not $forNavAppExists) {
     return
 }
 
-$project = if ($parameters.ContainsKey('project')) {
-    $parameters.project
-}
-else {
-    "."
-}
+$project = $parameters.project
 
 if (-not (Get-Command DownloadAndImportBcContainerHelper -ErrorAction SilentlyContinue)) {
     throw "AL-Go function 'DownloadAndImportBcContainerHelper' is not available in BuildInitialize."
@@ -34,37 +29,13 @@ if (-not (Get-Command DetermineArtifactUrl -ErrorAction SilentlyContinue)) {
     throw "AL-Go function 'DetermineArtifactUrl' is not available in BuildInitialize."
 }
 
-$baseFolder = if ($env:GITHUB_WORKSPACE) {
-    $env:GITHUB_WORKSPACE
-}
-else {
-    (Get-Location).Path
-}
-
-$projectSettings = ReadSettings -baseFolder $baseFolder -project $project
-
-if (-not ($projectSettings.Keys -contains 'applicationDependency')) {
-    $projectSettings.applicationDependency = '18.0.0.0'
-}
-
-$projectSettings = AnalyzeRepo `
-    -settings $projectSettings `
+$settings = AnalyzeRepo `
+    -settings $settings `
     -project $project `
     -doNotCheckArtifactSetting `
     -doNotIssueWarnings
 
-foreach ($propertyName in $projectSettings.Keys) {
-    if ($settings.PSObject.Properties.Name -contains $propertyName) {
-        continue
-    }
-
-    $settings | Add-Member `
-        -MemberType NoteProperty `
-        -Name $propertyName `
-        -Value $projectSettings[$propertyName]
-}
-
-$artifactUrl = DetermineArtifactUrl -projectSettings $projectSettings
+$artifactUrl = DetermineArtifactUrl -projectSettings $settings
 
 if ([string]::IsNullOrWhiteSpace($artifactUrl)) {
     throw "Could not resolve a Business Central artifact URL."

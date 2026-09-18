@@ -155,32 +155,6 @@ jobs:
           shell: ${{ inputs.shell }}
           project: ${{ inputs.project }}
 
-      - name: Resolve ForNAV runtime dependency
-        if: steps.DetermineBuildProject.outputs.BuildIt == 'True' && contains(env.Settings, 'fornav.com/products/rep/runtime')
-        run: |
-          $settings = $env:Settings | ConvertFrom-Json
-          $artifactMatch = [regex]::Match($env:artifact, '/(?<version>\d+)\.\d+(?:\.\d+){0,2}/')
-
-          if (-not $artifactMatch.Success) {
-            throw "Could not determine the BC version from artifact URL '$env:artifact'."
-          }
-
-          $bcVersion = $artifactMatch.Groups['version'].Value
-          $settings.installApps = @(
-            foreach ($installApp in @($settings.installApps)) {
-              if ($installApp -match '^https://www\.fornav\.com/products/rep/runtime/\?bcversion=') {
-                "https://www.fornav.com/products/rep/runtime/?bcversion=$bcVersion"
-              }
-              else {
-                $installApp
-              }
-            }
-          )
-
-          $settingsJson = $settings | ConvertTo-Json -Depth 99 -Compress
-          Add-Content -Encoding UTF8 -Path $env:GITHUB_ENV -Value "Settings=$settingsJson"
-          Write-Host "ForNAV runtime resolved to BC version $bcVersion"
-
       - name: Cache Business Central Artifacts
         if: steps.DetermineBuildProject.outputs.BuildIt == 'True' && env.useCompilerFolder == 'True' && inputs.useArtifactCache && env.artifactCacheKey
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
