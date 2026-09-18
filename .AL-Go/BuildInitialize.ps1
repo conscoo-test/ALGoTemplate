@@ -34,11 +34,23 @@ if (-not (Get-Command DetermineArtifactUrl -ErrorAction SilentlyContinue)) {
     throw "AL-Go function 'DetermineArtifactUrl' is not available in BuildInitialize."
 }
 
+$projectSettings = ConvertTo-HashTable ($settings | ConvertTo-Json -Depth 99)
+if (-not $projectSettings.ContainsKey('applicationDependency')) {
+    $projectSettings.applicationDependency = '18.0.0.0'
+}
+
 $projectSettings = AnalyzeRepo `
-    -settings (ConvertTo-HashTable ($settings | ConvertTo-Json -Depth 99)) `
+    -settings $projectSettings `
     -project $project `
     -doNotCheckArtifactSetting `
     -doNotIssueWarnings
+
+if ($settings.PSObject.Properties.Name -contains 'applicationDependency') {
+    $settings.applicationDependency = $projectSettings.applicationDependency
+}
+else {
+    $settings | Add-Member -MemberType NoteProperty -Name applicationDependency -Value $projectSettings.applicationDependency
+}
 
 $artifactUrl = DetermineArtifactUrl -projectSettings $projectSettings
 
