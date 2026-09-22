@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag (leer = aus app.json ermitteln)
+        description: Tag (leer = aus repoVersion ermitteln)
         required: false
         default: ''
       name:
@@ -51,30 +51,20 @@ jobs:
       - name: Versions-Tag ermitteln
         id: version
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           $tag = '${{ inputs.tag }}'.Trim()
           if (-not $tag) {
-            $treeJson = gh api "repos/$env:GITHUB_REPOSITORY/git/trees/main?recursive=1"
-            if ($LASTEXITCODE -ne 0) { Write-Error "Tree API failed: $treeJson"; exit 1 }
-            $tree    = $treeJson | ConvertFrom-Json
-            $entries = $tree.tree | Where-Object { $_.path -match '(^|/)app\.json$' -and $_.path -notmatch '\.alpackages' -and $_.type -eq 'blob' }
-            $highest = $null
-            foreach ($entry in $entries) {
-              $blobJson = gh api "repos/$env:GITHUB_REPOSITORY/git/blobs/$($entry.sha)"
-              if ($LASTEXITCODE -ne 0) { Write-Warning "Skipping $($entry.path) (blob error)"; continue }
-              $blob    = $blobJson | ConvertFrom-Json
-              $appJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($blob.content)) | ConvertFrom-Json
-              $verStr  = $appJson.version -replace '^(\d+\.\d+\.\d+\.\d+).*','$1'
-              if (-not $verStr) { Write-Warning "Skipping $($entry.path) (no version field)"; continue }
-              $ver     = [System.Version]$verStr
-              if ($null -eq $highest -or $ver -gt $highest.Ver) {
-                $highest = [pscustomobject]@{ Ver = $ver; AppJson = $appJson }
-              }
+            if (-not (Test-Path '.AL-Go/settings.json')) {
+              Write-Error 'Missing .AL-Go/settings.json'; exit 1
             }
-            if ($null -eq $highest) { Write-Error "No valid app.json with version found in main"; exit 1 }
-            $tag = "$($highest.Ver.Major).$($highest.Ver.Minor).$($highest.Ver.Build)"
+            $settings = Get-Content '.AL-Go/settings.json' -Raw | ConvertFrom-Json
+            $repoVersion = [string]$settings.repoVersion
+            if ($repoVersion -notmatch '^\d+(\.\d+){1,3}$') {
+              Write-Error "Invalid or missing repoVersion in .AL-Go/settings.json: '$repoVersion'"; exit 1
+            }
+            $versionParts = $repoVersion.Split('.')
+            while ($versionParts.Count -lt 3) { $versionParts += '0' }
+            $tag = ($versionParts | Select-Object -First 3) -join '.'
           }
           $releaseName = '${{ inputs.name }}'.Trim()
           if (-not $releaseName) { $releaseName = "Release $tag" }
