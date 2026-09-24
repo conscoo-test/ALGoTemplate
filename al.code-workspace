@@ -4,5 +4,44 @@
             "path": ".AL-Go"
         }
     ],
-    "settings": {}
+    "settings": {
+		"al.enableCodeAnalysis": true,
+		"CRS.OnSaveAlFileAction": "DoNothing",
+		"CRS.RemovePrefixFromFilename": true,
+		"CRS.FileNamePattern": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+		"CRS.FileNamePatternExtensions": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+		"CRS.FileNamePatternPageCustomizations": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+		"al.ruleSetPath": "../custom.ruleset.json",
+		"al.codeAnalyzers": [
+			"${CodeCop}",
+			"${UICop}",
+			"${PerTenantExtensionCop}",
+			"${AppSourceCop}",
+			"${analyzerFolder}ALCops.ApplicationCop.dll",
+			"${analyzerFolder}ALCops.DocumentationCop.dll",
+			"${analyzerFolder}ALCops.FormattingCop.dll",
+			"${analyzerFolder}ALCops.LinterCop.dll",
+			"${analyzerFolder}ALCops.PlatformCop.dll",
+			"${analyzerFolder}ALCops.TestAutomationCop.dll",
+			"${analyzerFolder}ALCops.Common.dll"
+		],
+		"alVarHelper.ignoreALPrefix": "lbt",
+		"editor.codeActionsOnSave": {
+			"source.fixAll.al": "explicit"
+		},
+		"alOutline.codeActionsOnSave": [
+			"SortVariables",
+			"SortProperties",
+			"SortTableFields",
+		],
+		"NAB.UseTargetStates": true,
+		"xliffSync.useSelfClosingTags": false,
+		"xliffSync.parseFromDeveloperNote": true,
+		"xliffSync.parseFromDeveloperNoteOverwrite": true
+	},
+	"extensions": {
+		"recommendations": [
+			"arthurvdv.alcops"
+		]
+	}
 }

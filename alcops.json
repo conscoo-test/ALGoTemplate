@@ -1,0 +1,40 @@
+{
+    "NamingPatterns": {
+        "Variable": {
+            "AllowPattern": "^(?:[A-Z]|[a-z]$|l)",
+            "AllowDescription": "should start with an uppercase letter, be a single lowercase letter, or start with lowercase l"
+        },
+        "Procedure": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        },
+        "Parameter": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        },
+        "ReturnValue": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        },
+        "Object": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        },
+        "Field": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        },
+        "Action": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        },
+        "EnumValue": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        },
+        "Control": {
+            "AllowPattern": "^[A-Zl]",
+            "AllowDescription": "should start with an uppercase letter or lowercase l"
+        }
+    }
+}

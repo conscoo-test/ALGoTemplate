@@ -1,0 +1,24 @@
+{
+    "name": "lebit",
+    "rules": [
+        {
+            "id": "AC0010",
+            "action": "Error",
+            "justification": "Promoted to Error (All application objects should be covered by at least one permission set in the extension.)"
+        },
+        {
+            "id": "AA0218",
+            "action": "Info",
+            "justification": "Demoted to Info. Don't force Tooltips, only add them when they give additional value"
+        },
+        {
+            "id": "LC0033",
+            "action": "Warning",
+            "justification": "Promoted to Warning."
+        }
+
+
+        
+    ]
+
+}

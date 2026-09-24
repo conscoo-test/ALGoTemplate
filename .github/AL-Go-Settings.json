@@ -6,5 +6,14 @@
   "NextMajorSchedule": "0 2 * * 0",
   "NextMinorSchedule": "0 2 * * 6",
   "CurrentSchedule": "0 2 * * 1",
-  "versioningStrategy": 16
+  "versioningStrategy": 16,
+  "customALGoFiles": {
+    "filesToInclude": [
+      {
+        "sourceFolder": ".",
+        "filter": "alcops.json"
+      }
+    ],
+    "filesToExclude": []
+  }
 }

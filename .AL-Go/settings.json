@@ -7,6 +7,8 @@
   "fullBuildPatterns": [
     ".AL-Go/settings.json"
   ],
+  "enableExternalRulesets": true,
+  "rulesetFile": "custom.ruleset.json",
   "customCodeCops": [
     ".alcops/ALCops.ApplicationCop.dll",
     ".alcops/ALCops.DocumentationCop.dll",
