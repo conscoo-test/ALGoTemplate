@@ -2,7 +2,11 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/v9.2/.Modules/settings.schema.json",
   "type": "PTE",
   "templateUrl": "https://github.com/microsoft/AL-Go-PTE@main",
-  "CICDPushBranches": [ "main", "rc/internal", "rc/external" ],
+  "CICDPushBranches": [
+    "main",
+    "rc/internal",
+    "rc/external"
+  ],
   "NextMajorSchedule": "0 2 * * 0",
   "NextMinorSchedule": "0 2 * * 6",
   "CurrentSchedule": "0 2 * * 1",
@@ -15,5 +19,6 @@
       }
     ],
     "filesToExclude": []
-  }
+  },
+  "templateSha": "b7dd1f32feb254e07086096e8970fba1187d9a6e"
 }
