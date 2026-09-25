@@ -5,6 +5,7 @@ on:
 
 jobs:
   rebuild-rc-branches:
+    if: vars.RELEASE_STAGES != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write

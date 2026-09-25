@@ -6,6 +6,7 @@ on:
 
 jobs:
   reset-labels:
+    if: vars.RELEASE_STAGES != ''
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

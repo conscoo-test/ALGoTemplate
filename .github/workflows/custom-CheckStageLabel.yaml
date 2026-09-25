@@ -6,11 +6,12 @@ on:
 
 jobs:
   check-label:
+    if: vars.RELEASE_STAGES != ''
     runs-on: ubuntu-latest
     permissions:
       checks: write
       pull-requests: read
-    # Workflow läuft immer durch (exit 0) → keine Failure-Mail; PR wird per Check Run blockiert
+    # Ohne RELEASE_STAGES wird der Job übersprungen; andernfalls wird der PR per Check Run geprüft.
     steps:
       - name: Check required stage label
         env:
